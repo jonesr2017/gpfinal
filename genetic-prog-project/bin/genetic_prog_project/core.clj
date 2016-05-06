@@ -107,5 +107,31 @@ prog
 prog
 
 (replace-random-subtree prog 99)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;start of our project: "genetic programming maze"
 
+(def terminal-set
+  '(;put x here and erc's
+     ))
+
+(def function-set
+  '(exp + - /))
+
+(defn exp
+  [base-i pwr]
+  (loop [base base-i 
+         pwr pwr]
+    (cond 
+      (= pwr 0) 1
+      (= pwr 1) (* base 1)
+      (> pwr 1) (recur
+                  (* base base-i)
+                  (dec pwr))
+      )
+    )
+  )
+
+                  
