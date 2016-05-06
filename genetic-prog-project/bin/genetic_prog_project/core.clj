@@ -107,20 +107,20 @@ prog
 prog
 
 (replace-random-subtree prog 99)
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;start of our project: "genetic programming maze"
+;start of our project: "genetic-prog-project"
 
-(def terminal-set
-  '(;put x here and erc's
-     ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def function-set
-  '(exp + - /))
+;;; helper functions/ function definitions ;;; 
 
 (defn exp
+  "Rasies the base to the pwr"
   [base-i pwr]
   (loop [base base-i 
          pwr pwr]
@@ -133,5 +133,55 @@ prog
       )
     )
   )
+
+(defn erc
+  "Generates a random number between min and max (inclusive)"
+  [min max]
+  (rand-nth (range min (+ max 1)))
+)
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;; GP implementations ;;;
+
+; list of terminals
+; erc [-10, 10], x
+
+; list of functions
+; +, -, /, *, exp
+
+(def terminal-set
+  '((erc -10 10) x))
+
+(def function-set
+  '(exp + - / *))
+
+(def primitive-set
+  (concat terminal-set function-set))
+
+(def max-depth 6)
+
+
+
+
+(defn genetic-programming
+  []
+  "dingle-dongle")
+
+(defn full
+  [depth fns terms]
+  (loop [prog [] 
+         d 0]
+    (let [cur (eval(rand-nth terms))]
+      
+      (cond
+        (= d  depth) (conj prog cur) ; if we are at max depth, add a terminal... wont work because wont make a full tree...yet
+        (= d (+ depth 1)) prog
+        :else (recur (conj prog (rand-nth fns)) (inc d))))))
+
+      
 
                   
