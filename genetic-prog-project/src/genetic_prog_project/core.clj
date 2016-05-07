@@ -281,32 +281,21 @@ prog
 
 
 
-(defn build-fn
-  [fn-depth function]
-  (let [f function
-        d fn-depth]
+(defn full                                        ; yay!!! full works
+  "Builds a function using Full method"
+  [max-d]
+  (let [d max-d]
     (cond
-      (= d 0) (concat f (rand-term))
-      (= d 1) (concat f (rand-term) (rand-term))
-      :else (building-fn (dec fn-depth) (conj p (rand-fn)))
+      (= d 0) (list (rand-term))
+      (= d 1) (list (rand-fn)(rand-term) (rand-term))
+      :else (list (rand-fn) (full (dec d)) (full (dec d)))
       )
     )
   )
-(building-fn 1 '())
+(full 2)
+(full (max-depth))
     
-   
-  
 
-(defn full                                              
-  "Builds a function using Full method, by returning one value at a time"
-  [program depth fns terms]                              
-  (loop [prog program
-         d 0]
-    (let [cur (rand-nth terms)] ;cant eval x
-      (cond
-        (= d  depth) (conj prog cur) ; if we are at max depth, add a terminal... wont work because wont make a full tree...yet
-        (= d (+ depth 1)) prog
-        :else (recur (conj prog (rand-nth fns)) (inc d))))))
 
 
 (defn grow
