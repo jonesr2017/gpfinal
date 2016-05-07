@@ -2,45 +2,7 @@
 
 
 
-;genetic programming
-
-
-; Let's say we have a program in the form of a list;
-; this one is 5x + (2x - 3) = 7x - 3
-
-(def prog
-  '(+ (* x 5) (- (+ x x) 3)))
-
-prog
-
-;(eval prog) ; error: we haven't said what x should be!
-
-;(prog 5) ; error: prog isn't a function, it is just a list
-
-; We need to turn the program into a function, where
-; x is the input to the function. Then, we could run it
-; on the input.
-
-(defn make-program-into-fn                                                  ;this  will turn the prog above into an actual function using eval
-  "Takes a GP program represented as a list, with input x,                  
-   and transforms it into a function that can be called on an input.
-   NOTE: If your GP uses variables other than x, will need to change
-         the argument list below to something other than [x]!"
-  [program]                                                                ; prog is (+ (* x 5) (- (+ x x) 3))
-  (eval (list 'fn                                                          ; is basiccally the same thing as doung (fn [x] program))
-              '[x]
-              program)))
-
-; Now, we can get a function version of prog, and then apply
-; it to input 2:
-(let [prog-fn (make-program-into-fn prog)]
-  (prog-fn 2))
-
-; Q: Let's say the inputs are (range 10)
-; How can we get the outputs of the program on those inputs?
-; A:
-(let [prog-fn (make-program-into-fn prog)]
-  (map prog-fn (range 10)))
+;genetic 
 
 ;========================================
 
@@ -125,6 +87,19 @@ prog
 )
 
 
+(defn in                                         ;might need
+  "Returns true if value is in collection"
+  [value collection]
+  (loop [i 0]
+    (cond
+      (= (nth collection i) value) true
+      (= i (- (count collection) 1)) false
+      :else (recur (inc i))
+      )
+    )
+  )
+
+
 
 
 
@@ -165,7 +140,7 @@ prog
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; exponent and erc ;;; 
+;;; evaluate, program-to-fn, exponent and erc ;;; 
 
 (defn exp
   "Rasies the base to the pwr"
@@ -187,6 +162,60 @@ prog
   [min max]
   (rand-nth (range min (+ max 1))))
 
+; Let's say we have a program in the form of a list;
+; this one is 5x + (2x - 3) = 7x - 3
+
+(def prog
+  '(+ (* x 5) (- (+ x x) 3)))
+
+prog
+
+;(eval prog) ; error: we haven't said what x should be!
+
+;(prog 5) ; error: prog isn't a function, it is just a list
+
+; We need to turn the program into a function, where
+; x is the input to the function. Then, we could run it
+; on the input.
+
+(defn program-to-fn                                                  ;this  will turn the prog above into an actual function using eval
+  "Takes a GP program represented as a list, with input x,                  
+   and transforms it into a function that can be called on an input.
+   NOTE: If your GP uses variables other than x, will need to change
+         the argument list below to something other than [x]!"
+  [program]                                                                ; prog is (+ (* x 5) (- (+ x x) 3))
+  (eval (list 'fn                                                          ; is basiccally the same thing as doung (fn [x] program))
+              '[x]
+              program)))
+
+; Now, we can get a function version of prog, and then apply
+; it to input 2:
+
+(let [prog-fn (make-program-into-fn prog)]
+  (prog-fn 2))
+
+; Q: Let's say the inputs are (range 10)
+; How can we get the outputs of the program on those inputs?
+; A:
+(let [prog-fn (make-program-into-fn prog)]
+  (map prog-fn (range 10)))
+
+(defn evaluate 
+  "Evaluates a program with a given x-value.
+   With 3 inputs, the first one should be map, second should be the program and
+   the thrid should be the desired range to map the function along."
+  ([program x-value]
+  (let [prog-fn (make-program-into-fn program)]
+  (prog-fn x-value)))
+  ([map program x-value]
+  (let [prog-fn (make-program-into-fn program)]
+  (map prog-fn (range x-value))))
+  )
+
+prog
+(evaluate prog 2)
+(evaluate map prog 10)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;; GP constants ;;;
@@ -206,6 +235,8 @@ prog
   (rand-nth terminal-set))
 ;
 (rand-term)
+
+
 
 (def function-set
   '(exp + - / *))
@@ -237,30 +268,6 @@ prog
   (rand-nth (range 2 6))) ; this might be better because the function is only depth 3, and need a range for ramped half-half
 
 
-;(into '() (reverse [1 2 3 4])) for when evaluating
-; more like this
-; (into '() (reverse ['+ '(* 3 2) 4]))
-; or 
-;(into '() (reverse ['+ '(* 3 2)'(+ 4 8)]))
-; or
-; (into '() (reverse ['+ '(* 3 2 (+ 4 3))'(+ 4 8)]))  ; for nested functions
-
-;;;; conclustion of ^
-
-; first function in tree needs a ' but no parens
-; second function on left and right subtree of root need ' and (
-; rest of functions only need (
-
-; pseudo code
-;
-; check the level using evaluate-depth
-            ;making a function that allows you to loop to add only two arguments to any given function might eliminate the need for eval depth
-;      if 0, just add function or terminal to vector []
-;      if 1 (should be able to tell somehow by number of parens in vector), the function should be added as a list -> '(+) 
-;                                                                            maybe here we should loop to add two arguments to list
-                                                                            ;if we looped every time we added a function to allow two arguments
-                                                                            ;that would probably work
-;     if >1 just add the function                                                                               
 
 ;;;;;;;;;;;;;;;;
 ;helmuth help
@@ -286,7 +293,7 @@ prog
   [max-d]
   (let [d max-d]
     (cond
-      (= d 0) (list (rand-term))
+      (= d 0) (rand-term)
       (= d 1) (list (rand-fn)(rand-term) (rand-term))
       :else (list (rand-fn) (full (dec d)) (full (dec d)))
       )
@@ -294,29 +301,43 @@ prog
   )
 (full 2)
 (full (max-depth))
+
+(def full1 (full 1))
+full1
+(evaluate full1 2)               ;need to fix the divide by 0 problem
+(evaluate map prog 10)
     
 
 
 
-(defn grow
-  "Builds a function using Full method, by returning one value at a time"
-  [program depth fns terms]
+(defn grow                                                                   ; yay! grow works
+  "Builds a function using Grow method, by returning one value at a time"
+  [max-d]
+  (let [d max-d
+        odds (rand)
+        lst '()]
+    (cond
+      (= d 0) (rand-term)
+      (= d 1) (if (< odds 0.5)
+                (list (rand-fn) (rand-term) (rand-term))
+                (rand-term))
+      :else (if (< odds 0.5)
+              (list (rand-fn) (grow (dec d)) (grow (dec d)))
+              (rand-term))
+      )
+    )
   )
 
+(grow 2)
 
-(defn evaluate-depth                                                          ;might not be necessary
-  "Will evaluate the current height of the program tree (the max depth)"
-  []
-  )
+(def grow2 (grow 2))
+grow2
+(evaluate grow2 2)
+(evaluate map grow2 6)   ;evaluates grow2 for 0-5
 
 
-(defn isFull?                                                                  ;might not be necessary
-  "Will evaluate if a program tree is full or already has terminals"
-  [program]
-  )
- 
 
-(defn ramped-h-h
+(defn ramped-h-h                                              ; does ramped half and half either do full or grow? or does it decide between full and grow as it goes down the tree
   "Builds a program tree using ramped half and half"
   [max-dp fns terms prims]
   (loop [program []
@@ -325,7 +346,7 @@ prog
       (isFull? program) program
       (< (rand) 0.5) (recur 
                        (conj program (full program d function-set terminal-set))
-                       (evaluate-depth))     
+                       (evaluate-depth)
       (< (rand) 0.5) (recur
                        (conj program (grow program d primitive-set terminal-set))
                        (evaluate-depth)))
