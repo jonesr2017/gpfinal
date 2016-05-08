@@ -2,26 +2,16 @@
 
 
 
-;genetic 
-
-;========================================
-
-; Next, we'll show how to select a random subtree from
-; a program, and how to replace a random subtree with
-; a given subtree.
-
-(def instructions
-  '{+ 2                               ; ' mark is important because it allows each to be a symbol
-    * 2
-    - 2
-    inc 1})
-
 (defn program-size
   "Finds the size of the program, i.e. number of nodes in its tree."
   [prog]
   (if (not (seq? prog))            ; if its not a sequence it will return 1.. this lets us evalute the size of a terminal
     1
     (count (flatten prog))))       ;flatten essentially removes all parenthesis so you can easily evaluate size of the tree
+
+
+(def prog
+  '(+ (* x 5) (- (+ x x) 3)))
 
 (program-size prog)
 (program-size 5)
@@ -140,7 +130,38 @@ prog
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; evaluate, program-to-fn, exponent and erc ;;; 
+; helper functions
+
+(defn abs
+  "Absolute value of x"
+  [x]
+  (max x (- 0 x)))
+
+(defn list-subtraction
+  "Subtracts the value of two lists and returns a list of the absolute value of those subtractions"
+  [list1 list2]
+  (loop [i (- (count list1) 1)
+         lst '()]
+    (if (< i 0)
+      lst
+      (recur (dec i)
+             (conj lst (abs (- (nth list1 i) (nth list2 i))))
+             )
+      )
+    )
+  )
+
+
+
+;solution function
+
+(def solution '(+ (* x (* x x)) (+ x 3)))
+(def solution-set (evaluate map solution -5 6))
+
+
+;definitions of terminals and functions
+
+;;; evaluate, safe-divide, program-to-fn, exponent and erc ;;; 
 
 (defn exp
   "Rasies the base to the pwr"
@@ -157,26 +178,22 @@ prog
     )
   )
 
+(defn safe-divide
+  "Division that handels case of divide by 0"
+  [dividend divisor]
+  (if (= divisor 0)
+    1
+    (/ dividend divisor)))
+
 (defn erc
   "Generates a random number between min and max (inclusive)"
   [min max]
   (rand-nth (range min (+ max 1))))
 
-; Let's say we have a program in the form of a list;
-; this one is 5x + (2x - 3) = 7x - 3
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+;;;;;;;;;;;;; evaluating programs
 
-(def prog
-  '(+ (* x 5) (- (+ x x) 3)))
-
-prog
-
-;(eval prog) ; error: we haven't said what x should be!
-
-;(prog 5) ; error: prog isn't a function, it is just a list
-
-; We need to turn the program into a function, where
-; x is the input to the function. Then, we could run it
-; on the input.
 
 (defn program-to-fn                                                  ;this  will turn the prog above into an actual function using eval
   "Takes a GP program represented as a list, with input x,                  
@@ -188,37 +205,34 @@ prog
               '[x]
               program)))
 
-; Now, we can get a function version of prog, and then apply
-; it to input 2:
-
-(let [prog-fn (make-program-into-fn prog)]
-  (prog-fn 2))
-
-; Q: Let's say the inputs are (range 10)
-; How can we get the outputs of the program on those inputs?
-; A:
-(let [prog-fn (make-program-into-fn prog)]
-  (map prog-fn (range 10)))
 
 (defn evaluate 
   "Evaluates a program with a given x-value.
    With 3 inputs, the first one should be map, second should be the program and
-   the thrid should be the desired range to map the function along."
+   the thrid should be the desired range to map the function along.
+   With 4 inputs, the first is the map function, second is the program, third is the 
+   start of the range (inclusive), fourth is the end of the range function (exclusive)"
   ([program x-value]
-  (let [prog-fn (make-program-into-fn program)]
+  (let [prog-fn (program-to-fn program)]
   (prog-fn x-value)))
-  ([map program x-value]
-  (let [prog-fn (make-program-into-fn program)]
-  (map prog-fn (range x-value))))
+  ([map program end]
+  (let [prog-fn (program-to-fn program)]
+  (map prog-fn (range end))))
+  ([map program start end]
+  (let [prog-fn (program-to-fn program)]
+  (map prog-fn (range start end))))
   )
 
-prog
-(evaluate prog 2)
-(evaluate map prog 10)
+(defn evaluate-population
+  "Takes a population and an x-value and evaluates every individual program."
+  [pop x-value]
+  (map (fn [x] (evaluate x x-value)) pop))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;; GP constants ;;;
+;;;; Terminal, function, and primitive sets  and decided range for max-depth ;;;
 
 ; list of terminals
 ; erc [-10, 10], x
@@ -233,20 +247,18 @@ prog
   "returns a ranom value in the terminal set"
   []
   (rand-nth terminal-set))
-;
-(rand-term)
+
 
 
 
 (def function-set
-  '(exp + - / *))
+  '(+ - safe-divide *))
 
 (defn rand-fn
   "returns a ranom value in the function set"
   []
   (rand-nth function-set))
-;
-(rand-fn)
+
 
 
 
@@ -257,32 +269,15 @@ prog
   "returns a ranom value in the primitive set"
   []
   (rand-nth primitive-set))
-;
-(rand-prim)
 
 
 
-(defn max-depth 
+
+(defn depth-range 
   "Returns a number from range 2-5"
   []
-  (rand-nth (range 2 6))) ; this might be better because the function is only depth 3, and need a range for ramped half-half
+  (rand-nth (range 2 5))) ; this might be better because the function is only depth 3, and need a range for ramped half-half
 
-
-
-;;;;;;;;;;;;;;;;
-;helmuth help
-
-;So, the way you're building up a program, you'll only be able to add things onto a linear vector (or list).
-;
-;But, you want to create a nested structure. To do that, when you select a function, you'll need to stick it
-;in a list along with its two arguments (or some other if it takes a different number of arguments).
-;
-;The question then is what those arguments will be. My suggestion would be that they should be created in recursive
-;calls to the same function, adjusting the depth accordingly.
-;
-;Think about it this way: if the function is called with depth of 0, it should produce a single terminal, like x or 3.
-;If depth is 1, it will choose one function, and the recursive calls for its arguments will have depth 0 and will be terminals,
-;creating something like (+ 3 x).
 
 ;;;;;;;;;;;;;;;;;;;;;  Initialization methods and helper functions  ;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -291,67 +286,97 @@ prog
 (defn full                                        ; yay!!! full works
   "Builds a function using Full method"
   [max-d]
-  (let [d max-d]
+  (let [d         max-d
+        terminal1 (if (= (rand-term) '(erc -10 10))
+                    (erc -10 10)
+                    'x)
+        terminal2 (if (= (rand-term) '(erc -10 10))
+                    (erc -10 10)
+                    'x)]
     (cond
-      (= d 0) (rand-term)
-      (= d 1) (list (rand-fn)(rand-term) (rand-term))
+      (= d 0) terminal1
+      (= d 1) (list (rand-fn) terminal1 terminal2)
       :else (list (rand-fn) (full (dec d)) (full (dec d)))
       )
     )
   )
-(full 2)
-(full (max-depth))
 
-(def full1 (full 1))
-full1
-(evaluate full1 2)               ;need to fix the divide by 0 problem
-(evaluate map prog 10)
-    
-
-
+   
 
 (defn grow                                                                   ; yay! grow works
   "Builds a function using Grow method, by returning one value at a time"
   [max-d]
   (let [d max-d
         odds (rand)
-        lst '()]
+        terminal1 (if (= (rand-term) '(erc -10 10))
+                    (erc -10 10)
+                    'x)
+        terminal2 (if (= (rand-term) '(erc -10 10))
+                    (erc -10 10)
+                    'x)]
     (cond
-      (= d 0) (rand-term)
+      (= d 0) terminal1
       (= d 1) (if (< odds 0.5)
-                (list (rand-fn) (rand-term) (rand-term))
-                (rand-term))
+                (list (rand-fn) terminal1 terminal2)
+                terminal1)
       :else (if (< odds 0.5)
               (list (rand-fn) (grow (dec d)) (grow (dec d)))
-              (rand-term))
+              terminal1)
       )
     )
   )
 
-(grow 2)
-
-(def grow2 (grow 2))
-grow2
-(evaluate grow2 2)
-(evaluate map grow2 6)   ;evaluates grow2 for 0-5
 
 
 
-(defn ramped-h-h                                              ; does ramped half and half either do full or grow? or does it decide between full and grow as it goes down the tree
+(defn ramped-h-h                                              
   "Builds a program tree using ramped half and half"
-  [max-dp fns terms prims]
-  (loop [program []
-         d 0]
-    (cond
-      (isFull? program) program
-      (< (rand) 0.5) (recur 
-                       (conj program (full program d function-set terminal-set))
-                       (evaluate-depth)
-      (< (rand) 0.5) (recur
-                       (conj program (grow program d primitive-set terminal-set))
-                       (evaluate-depth)))
+  []
+  (let [odds (rand)]
+    (if (< odds 0.5)
+      (grow (depth-range))
+      (full (depth-range)))
     )
   )
-      
+
+
+(defn generate-init-population
+  [pop-size]
+  (take pop-size (repeatedly ramped-h-h)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; fitness functions
+
+(defn program-fitness                                       ; fitnees is the absolute deviation from the solution at a given x-value
+  "Returns the fitness of a program ."
+  [program]
+  (let [prog-values (evaluate map program -5 6)]                   ;the evaluated program from -5 to 5 (our predetermined range)
+    (apply + (list-subtraction prog-values solution-set))))
+;tester
+solution-set
+
+(defn population-fitness
+  "Returns a list of the fitness of each individual population"
+  [population]
+  (map (fn [x] (program-fitness x)) population))
+;tester
+(def poppi (generate-init-population 2))
+poppi
+(population-fitness poppi)
+solution-set
+    
+
+
+
+(defn tournament-selection
+  "Returns a list of the individual functions in the population that have a fitness below the given
+   fitness value"
+  [value fn-pop]
+  (filter (fn [x] (< (program-fitness x) value)) fn-pop))   
+;tester
+(tournament-selection 10 (generate-init-population 10000))
+
   
+
                   
