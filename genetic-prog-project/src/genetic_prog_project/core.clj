@@ -1,81 +1,7 @@
 (ns genetic-prog-project.core)
 
 
-
-(defn program-size
-  "Finds the size of the program, i.e. number of nodes in its tree."
-  [prog]
-  (if (not (seq? prog))            ; if its not a sequence it will return 1.. this lets us evalute the size of a terminal
-    1
-    (count (flatten prog))))       ;flatten essentially removes all parenthesis so you can easily evaluate size of the tree
-
-
-(def prog
-  '(+ (* x 5) (- (+ x x) 3)))
-
-(program-size prog)
-(program-size 5)
-
-
-
-
-(defn select-random-subtree
-  "Given a program, selects a random subtree and returns it."
-  ([prog]
-    (select-random-subtree prog (rand-int (program-size prog))))
-  ([prog subtree-index]
-    (cond
-      (not (seq? prog)) prog
-      (and (zero? subtree-index)
-           (some #{(first prog)} (keys instructions))) prog
-      (< subtree-index (program-size (first prog))) (recur (first prog)
-                                                           subtree-index)
-      :else (recur (rest prog)
-                   (- subtree-index (program-size (first prog)))))))
-
-
-
-
-(select-random-subtree prog) ; gives random subtree
-
-(select-random-subtree prog 0) ;gives subtree at index 0
-(select-random-subtree prog 1) ;gives subtree at index 1
-(select-random-subtree prog 2) ;gives subtree at index 2
-
-
-
-
-
-(defn replace-random-subtree                                                                   ; basically pt mutation
-  "Given a program and a replacement-subtree, replace a random node
-   in the program with the replacement-subtree."
-  ([prog replacement-subtree]
-      (replace-random-subtree prog replacement-subtree (rand-int (program-size prog))))
-  ([prog replacement-subtree subtree-index]
-    (cond
-      (not (seq? prog)) replacement-subtree
-      (zero? subtree-index) replacement-subtree
-      :else (map (fn [element start-index]
-                   (if (<= start-index
-                           subtree-index
-                           (+ start-index -1 (program-size element)))
-                     (replace-random-subtree element
-                                             replacement-subtree
-                                             (- subtree-index start-index))
-                     element))
-                 prog
-                 (cons 0 (reductions + (map program-size prog)))))))
-
-prog
-
-(replace-random-subtree prog '(+ x 5))
-
-
-
-
-
-
-(defn deep-map                                                             ; might need in future
+(defn deep-map                                                             ; might need in future for single pt mutation
   "deep-map takes a function and a nested collection as input arguments
    and applies the function to each element within the colection and 
    nested collections"
@@ -101,21 +27,6 @@ prog
       )
     )
   )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -151,7 +62,8 @@ prog
   (max x (- 0 x)))
 
 (defn list-subtraction
-  "Subtracts the value of two lists and returns a list of the absolute value of those subtractions"
+  "Subtracts the value of two lists and returns a list of the absnt1 parent2
+   olute value of those subtractions"
   [list1 list2]
   (loop [i (- (count list1) 1)
          lst '()]
@@ -356,6 +268,8 @@ prog
 (defn generate-init-population
   [pop-size]
   (take pop-size (repeatedly ramped-h-h)))
+;tester
+(generate-init-population 2)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -386,13 +300,20 @@ solution-set
 ;parent selection
 
 
-(defn threshold-selection
+(defn threshold-selection                       ;could use this functionn to reduce the population to semi-decent programs and then do tourni and such
   "Returns a list of the individual programs in the population that have a fitness below or equal to the given
    fitness value"
   [value prog-pop]
   (filter (fn [x] (<= (program-fitness x) value)) prog-pop))   
 ;tester
-(threshold-selection 100 (generate-init-population 1000))
+(def bigpoppa (generate-init-population 500))
+bigpoppa
+(def smallpoppa (threshold-selection 400 bigpoppa))
+smallpoppa
+(population-fitness smallpoppa)
+(def tinypoppa (best-n-progs smallpoppa 20))
+tinypoppa
+(population-fitness tinypoppa)
 
     
 
@@ -421,23 +342,19 @@ poppi
 
 
 
-
-(defn best-cross-over-selection
-  "Selects the best two programs out of the populations"
-  [prog-pop]
-  (let [minimum (apply min (population-fitness prog-pop)) ;lowest error in whole pop
-        best (first (take 1 (filter (fn[x] (= (program-fitness x) minimum)) prog-pop))) ;best is the best program
-        lst (remove (fn[x] (= best x)) prog-pop)                                ; lst is the rest of them after removing best
-        minimum2 (apply min (population-fitness lst))]                     ;min2 is lowest error in lst         
-    (list best (first (take 1 (filter (fn[x] (= (program-fitness x) minimum2)) lst))))      ; returns best and the best of the lst
-    )
-  )
+(defn best-n-progs
+  "Returns the best n number of programs from the given program population"
+  [prog-pop n]
+  (take n (sort-by program-fitness prog-pop)))
 ;tester
-(def poppi '(x 7 (* x (* x x))))
-poppi
-(population-fitness poppi)
-(apply min (population-fitness poppi))
-(best-cross-over-selection poppi)   
+(def poppu '(x 1 (* x x) (* (* x x) x)))
+poppu
+(population-fitness poppu)
+(best-n-progs poppu 12)
+             
+             
+      
+ 
 
 
 (defn rand-cross-over-selection
@@ -450,15 +367,231 @@ poppi
 (rand-cross-over-selection poppi)
   
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   
   
-;mutations
+;mutations helpers
 
-;pt mutation is essentially replace random subtree with a randomly generated subtree (grow or full)
-;cross-over is essentailly replace random subtree with select random subtree from the other parent
 
-;actually cycles
+(def instructions
+  '{+ 2                               ; ' mark is important because it allows each to be a symbol
+    * 2
+    - 2
+    safe-divide 2})
+
+
+
+(defn program-size
+  "Finds the size of the program, i.e. number of nodes in its tree."
+  [prog]
+  (if (not (seq? prog))            ; if its not a sequence it will return 1.. this lets us evalute the size of a terminal
+    1
+    (count (flatten prog))))       ;flatten essentially removes all parenthesis so you can easily evaluate size of the tree
+
+
+
+
+(defn select-random-subtree
+  "Given a program, selects a random subtree and returns it."
+  ([prog]
+    (select-random-subtree prog (rand-int (program-size prog))))
+  ([prog subtree-index]
+    (cond
+      (not (seq? prog)) prog
+      (and (zero? subtree-index)
+           (some #{(first prog)} (keys instructions))) prog
+      (< subtree-index (program-size (first prog))) (recur (first prog)
+                                                           subtree-index)
+      :else (recur (rest prog)
+                   (- subtree-index (program-size (first prog)))))))
+;tester
+(def prog '(+ (* x x) (safe-divide(+ x 4) (* x 2))))
+(select-random-subtree prog) ; gives random subtree
+(select-random-subtree prog 0) ;gives subtree at index 0
+
+
+
+
+
+(defn replace-random-subtree                                                                   ; basically pt mutation
+  "Given a program and a replacement-subtree, replace a random node
+   in the program with the replacement-subtree."
+  ([prog replacement-subtree]
+      (replace-random-subtree prog replacement-subtree (rand-int (program-size prog))))
+  ([prog replacement-subtree subtree-index]
+    (cond
+      (not (seq? prog)) replacement-subtree
+      (zero? subtree-index) replacement-subtree
+      :else (map (fn [element start-index]
+                   (if (<= start-index
+                           subtree-index
+                           (+ start-index -1 (program-size element)))
+                     (replace-random-subtree element
+                                             replacement-subtree
+                                             (- subtree-index start-index))
+                     element))
+                 prog
+                 (cons 0 (reductions + (map program-size prog)))))))
+;tester
+(def prog1 '(+ x 5))
+prog1
+(replace-random-subtree prog '(+ x 5))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; mutation or variation
+
+
+(defn replication
+  "Returns clone of the input program."
+  [prog]
+  prog)
+;tester
+(replication '(+ x 5))
+
+
+
+
+
+(defn subtree-mutation
+  "Selects a random node from an input program and replaces it with a random subtree
+   of max-depth 3"
+  [program]
+  (replace-random-subtree program (grow 3)))
+;tester
+(subtree-mutation '(* x (* x 2)))
+
+
+
+
+
+(defn pt-mutation
+  "Selects a random node in a program and replaces it with a new node of the same type"
+  [prog]
+  (let [node (rand-int (program-size prog))
+        sub-tree (select-random-subtree prog node)
+        terminal1 (if (= (rand-term) '(erc -10 10))
+                    (erc -10 10)
+                    'x)]
+    (if (seq? sub-tree)
+      (replace-random-subtree prog (conj (rest sub-tree) (rand-fn)) node)
+      (replace-random-subtree prog terminal1 node)
+      )
+    ))
+;tester     
+(pt-mutation '(* x (+ x 2)))
+
+
+
+
+
+(defn cross-over
+  "Performs cross-over mutation on two input parents
+   by replacing a random subtree from parent 1 with a
+   random subtree in parent2"
+  [parent1 parent2]
+  (replace-random-subtree parent1 (select-random-subtree parent2)))
+;tester
+(cross-over '(* x 1) '(- x (safe-divide x 2)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;mutate an entire generation
+
+(defn mutate-generation
+  "Takes an entire population of programs and produces a population of mutated children."
+  [population]
+  (loop [pop (best-n-progs population 20)
+         n (rand-int 100)
+         next-gen '()
+         count 50]         ;produces 50 children every time
+    (if (= 0 count)
+      next-gen
+      (cond
+        (< n 5) (recur ;5% point mutation on a random program
+                       pop
+                       (rand-int 100)
+                       (conj next-gen (pt-mutation (rand-nth pop)))
+                       (dec count))
+        (< n 25) (recur ;20% point mutation on the best program
+                        pop
+                        (rand-int 100)
+                        (conj next-gen (pt-mutation (first (best-n-progs pop 1))))
+                        (dec count))
+        (< n 45) (recur ;20% cross over on two random programs
+                        pop
+                        (rand-int 100)
+                        (conj next-gen (cross-over (rand-nth pop) (rand-nth pop)))
+                        (dec count))
+        (< n 75) (recur ;30% cross over on the best program and a random program
+                        pop
+                        (rand-int 100)
+                        (conj next-gen (cross-over (first (best-n-progs pop 1)) (rand-nth pop)))
+                        (dec count))
+        (< n 80) (recur ;5% sub-tree mutation on a random program 
+                        pop
+                        (rand-int 100)
+                        (conj next-gen (subtree-mutation (rand-nth pop)))
+                        (dec count))
+        (< n 95) (recur ;15% sub-tree mutation on the best program 
+                        pop
+                        (rand-int 100)
+                        (conj next-gen (subtree-mutation (first(best-n-progs pop 1))))
+                        (dec count))
+        (< n 100) (recur ;5% replication
+                         pop
+                         (rand-int 100)
+                         (conj next-gen (replication (rand-nth pop)))
+                         (dec count))
+        )
+      )
+    )
+  )
+;tester
+(subtree-mutation '(* x 6))
+(def rand-pop (generate-init-population 5))
+rand-pop
+(mutate-generation rand-pop 2)
+(def chik-pop '((* x (* x x) ) x (+ 7 (- x 2))))
+;(def chik-pop '((* x (* x x))))
+chik-pop
+(mutate-generation chik-pop 1)
+
+(def gen1 (generate-init-population 100))
+gen1
+(def gen2 (mutate-generation gen1))
+gen2
+(population-fitness gen2)
+(def gen3 (mutate-generation gen2))
+gen3
+(population-fitness gen3)
+(nth gen3 8)
+(def gen4 (mutate-generation gen3))
+gen4
+(def gen5 (mutate-generation gen4))
+gen5
+(population-fitness gen5)
+(def gen6 (mutate-generation gen5))
+gen6
+(population-fitness gen6)
+(take 3 (sort-by program-fitness gen6))
+
+
+        
+        
+        
+    
+
+
+
+
+
+
+
+;actual cycles
     ;loop through with inital population as the generate inital pop 
          ;and a generation number to keep track
     ;will do fitness eval ---> if fitness is ever below 11 or 0 then we terminate
