@@ -16,6 +16,9 @@
 (program-size prog)
 (program-size 5)
 
+
+
+
 (defn select-random-subtree
   "Given a program, selects a random subtree and returns it."
   ([prog]
@@ -30,11 +33,18 @@
       :else (recur (rest prog)
                    (- subtree-index (program-size (first prog)))))))
 
+
+
+
 (select-random-subtree prog) ; gives random subtree
 
 (select-random-subtree prog 0) ;gives subtree at index 0
 (select-random-subtree prog 1) ;gives subtree at index 1
 (select-random-subtree prog 2) ;gives subtree at index 2
+
+
+
+
 
 (defn replace-random-subtree                                                                   ; basically pt mutation
   "Given a program and a replacement-subtree, replace a random node
@@ -59,6 +69,9 @@
 prog
 
 (replace-random-subtree prog '(+ x 5))
+
+
+
 
 
 
@@ -356,6 +369,8 @@ prog
 ;tester
 solution-set
 
+
+
 (defn population-fitness
   "Returns a list of the fitness of each individual population"
   [population]
@@ -366,17 +381,93 @@ poppi
 (population-fitness poppi)
 solution-set
     
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;parent selection
 
 
-
-(defn tournament-selection
-  "Returns a list of the individual functions in the population that have a fitness below the given
+(defn threshold-selection
+  "Returns a list of the individual programs in the population that have a fitness below or equal to the given
    fitness value"
-  [value fn-pop]
-  (filter (fn [x] (< (program-fitness x) value)) fn-pop))   
+  [value prog-pop]
+  (filter (fn [x] (<= (program-fitness x) value)) prog-pop))   
 ;tester
-(tournament-selection 10 (generate-init-population 10000))
+(threshold-selection 100 (generate-init-population 1000))
 
+    
+
+
+(defn tournament-selection 
+  "Randomly selects 7 programs from the population input and outputs the best one with the best fitness"
+  [prog-pop]
+  (loop [i 0
+         lst '()]
+    (if (not (>= i 7))
+      (recur (inc i)
+             (conj lst (rand-nth prog-pop)))
+      (let [rand7 lst
+            minimum (apply min (population-fitness rand7))]
+        (take 1 (filter (fn[x] (= (program-fitness x) minimum)) rand7))    ;returns the best program of a random tournament in a nested list
+        )
+      )
+    )
+  )
+;tester
+(def poppi (generate-init-population 2))
+poppi
+(population-fitness poppi)
+(apply min (population-fitness poppi))
+(tournament-selection poppi)                                     
+
+
+
+
+(defn best-cross-over-selection
+  "Selects the best two programs out of the populations"
+  [prog-pop]
+  (let [minimum (apply min (population-fitness prog-pop)) ;lowest error in whole pop
+        best (first (take 1 (filter (fn[x] (= (program-fitness x) minimum)) prog-pop))) ;best is the best program
+        lst (remove (fn[x] (= best x)) prog-pop)                                ; lst is the rest of them after removing best
+        minimum2 (apply min (population-fitness lst))]                     ;min2 is lowest error in lst         
+    (list best (first (take 1 (filter (fn[x] (= (program-fitness x) minimum2)) lst))))      ; returns best and the best of the lst
+    )
+  )
+;tester
+(def poppi '(x 7 (* x (* x x))))
+poppi
+(population-fitness poppi)
+(apply min (population-fitness poppi))
+(best-cross-over-selection poppi)   
+
+
+(defn rand-cross-over-selection
+  "Selects, at random, two programs out of the populations"
+  [prog-pop]
+  (list (rand-nth prog-pop) (rand-nth prog-pop))
+  )
+;tester
+(def poppi (generate-init-population 3))
+(rand-cross-over-selection poppi)
   
 
-                  
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  
+  
+;mutations
+
+;pt mutation is essentially replace random subtree with a randomly generated subtree (grow or full)
+;cross-over is essentailly replace random subtree with select random subtree from the other parent
+
+;actually cycles
+    ;loop through with inital population as the generate inital pop 
+         ;and a generation number to keep track
+    ;will do fitness eval ---> if fitness is ever below 11 or 0 then we terminate
+    ;then parent selection using percentages of the different methods
+    ;then mutation using the different methods
+    
+    ;;;;;
+    ;print gen number
+    ;print best program
+    ;print total error of the best program
+    ;restart loop
+         ;recur with initial pop as children from this cycle and increment generation count
