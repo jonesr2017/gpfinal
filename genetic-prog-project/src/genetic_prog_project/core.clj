@@ -24,9 +24,10 @@
   [x]
   (max x (- 0 x)))
 
+
 (defn list-subtraction
-  "Subtracts the value of two lists and returns a list of the absnt1 parent2
-   olute value of those subtractions"
+  "Subtracts the values of two lists and returns a list of the absolute value
+   of the subtraction"
   [list1 list2]
   (loop [i (- (count list1) 1)
          lst '()]
@@ -40,20 +41,18 @@
   )
 
 
-
 ;solution function
 
-(def solution '(+ (* x (* x x)) (+ x 3)))
+(def solution '(+ (* x (* x x)) (+ x 3))) 
 (def solution-set (evaluate map solution -5 6))
 
-
-;definitions of terminals and functions
 
 ;;;  safe-divide, erc ;;; 
 
 
 (defn safe-divide
-  "Division that handels case of divide by 0"
+  "Division that handels case of divide by 0
+   by returning 1 if 0 is the divisor"
   [dividend divisor]
   (if (= divisor 0)
     1
@@ -74,7 +73,7 @@
    and transforms it into a function that can be called on an input.
    NOTE: If your GP uses variables other than x, will need to change
          the argument list below to something other than [x]!"
-  [program]                                                                ; prog is (+ (* x 5) (- (+ x x) 3))
+  [program]                                                                
   (eval (list 'fn                                                          ; is basiccally the same thing as doung (fn [x] program))
               '[x]
               program)))
@@ -86,13 +85,13 @@
    the thrid should be the desired range to map the function along.
    With 4 inputs, the first is the map function, second is the program, third is the 
    start of the range (inclusive), fourth is the end of the range function (exclusive)"
-  ([program x-value]
+  ([program x-value]                    ;evaluates with x-value
   (let [prog-fn (program-to-fn program)]
   (prog-fn x-value)))
-  ([map program end]
+  ([map program end]                    ;"map" argument can be anything... it just performs the map function 
   (let [prog-fn (program-to-fn program)]
   (map prog-fn (range end))))
-  ([map program start end]
+  ([map program start end]              ; allows you to map a range of x-values from any start-end pair
   (let [prog-fn (program-to-fn program)]
   (map prog-fn (range start end))))
   )
@@ -116,35 +115,26 @@
 
 (def terminal-set
   '((erc -10 10) x))
-
 (defn rand-term
   "returns a ranom value in the terminal set"
   []
   (rand-nth terminal-set))
 
 
-
-
 (def function-set
   '(+ - safe-divide *))
-
 (defn rand-fn
   "returns a ranom value in the function set"
   []
   (rand-nth function-set))
 
 
-
-
 (def primitive-set
   (concat terminal-set function-set))
-
 (defn rand-prim
   "returns a ranom value in the primitive set"
   []
   (rand-nth primitive-set))
-
-
 
 
 (defn depth-range 
@@ -156,27 +146,25 @@
 ;;;;;;;;;;;;;;;;;;;;;  Initialization methods and helper functions  ;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-
 (defn full                                        ; yay!!! full works
   "Builds a function using Full method"
   [max-d]
   (let [d         max-d
-        terminal1 (if (= (rand-term) '(erc -10 10))
+        terminal1 (if (= (rand-term) '(erc -10 10)) ;made this so erc can be evaluated
                     (erc -10 10)
                     'x)
-        terminal2 (if (= (rand-term) '(erc -10 10))
+        terminal2 (if (= (rand-term) '(erc -10 10)) ;made this so erc can be evaluated
                     (erc -10 10)
                     'x)]
     (cond
-      (= d 0) terminal1
-      (= d 1) (list (rand-fn) terminal1 terminal2)
-      :else (list (rand-fn) (full (dec d)) (full (dec d)))
+      (= d 0) terminal1                              ;terminal if leave
+      (= d 1) (list (rand-fn) terminal1 terminal2)   ; function with two terminals if 1 up from frontier
+      :else (list (rand-fn) (full (dec d)) (full (dec d)))  ;recursion otherwise
       )
     )
   )
 
-   
-
+  
 (defn grow                                                                   ; yay! grow works
   "Builds a function using Grow method, by returning one value at a time"
   [max-d]
@@ -201,8 +189,6 @@
   )
 
 
-
-
 (defn ramped-h-h                                              
   "Builds a program tree using ramped half and half"
   []
@@ -216,42 +202,39 @@
 
 (defn generate-init-population
   [pop-size]
-  (take pop-size (repeatedly ramped-h-h)))
+  (take pop-size (repeatedly ramped-h-h)))               ;we used ramped-h-h to help vary the functions
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; fitness functions
 
-(defn program-fitness                                       ; fitnees is the absolute deviation from the solution at a given x-value
+(defn program-fitness                                       ; fitnees is the sum of absolute deviation from the solution at a given x-value
   "Returns the fitness of a program ."
   [program]
   (let [prog-values (evaluate map program -5 6)]                   ;the evaluated program from -5 to 5 (our predetermined range)
     (apply + (list-subtraction prog-values solution-set))))
 
 
-
-
-(defn population-fitness
+(defn population-fitness                                                  ;mostly helpful for visualization of best functions
   "Returns a list of the fitness of each individual population"
   [population]
   (map (fn [x] (program-fitness x)) population))
 
-    
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;parent selection
 
 
-(defn threshold-selection                       ;could use this functionn to reduce the population to semi-decent programs and then do tourni and such
+(defn threshold-selection                       ;could use this functionn to reduce the population to 
+                                                ;semi-decent programs and then do tourni and such
   "Returns a list of the individual programs in the population that have a fitness below or equal to the given
    fitness value"
   [value prog-pop]
-  (filter (fn [x] (<= (program-fitness x) value)) prog-pop))   
-
-    
-
-
+  (filter (fn [x] (<= (program-fitness x) value)) prog-pop))   ;we found that this function greatly reduces diversity in population, 
+                                                               ;so we didnt include it in our genetic-programming fn but wanted it to
+                                                               ;be in here in-case we needed it for the next project
 (defn tournament-selection 
   "Randomly selects 7 programs from the population input and outputs the best one with the best fitness"
   [prog-pop]
@@ -263,9 +246,7 @@
       (first (sort-by program-fitness lst)))))
 
 
-
-
-(defn best-n-progs
+(defn best-n-progs                          ;this helps us guide our evolution towards better programs
   "Returns the best n number of programs from the given program population"
   [prog-pop n]
   (take n (sort-by program-fitness prog-pop)))
@@ -285,7 +266,6 @@
     safe-divide 2})
 
 
-
 (defn program-size
   "Finds the size of the program, i.e. number of nodes in its tree."
   [prog]
@@ -294,10 +274,8 @@
     (count (flatten prog))))       ;flatten essentially removes all parenthesis so you can easily evaluate size of the tree
 
 
-
-
-(defn select-random-subtree
-  "Given a program, selects a random subtree and returns it."
+(defn select-random-subtree                                         
+  "Given a program, selects a random subtree and returns it."         ;prof helmuths code 
   ([prog]
     (select-random-subtree prog (rand-int (program-size prog))))
   ([prog subtree-index]
@@ -311,14 +289,11 @@
                    (- subtree-index (program-size (first prog)))))))
 
 
-
-
-
 (defn replace-random-subtree                                                                   ; basically pt mutation
-  "Given a program and a replacement-subtree, replace a random node
+  "Given a program and a replacement-subtree, replace a random node       
    in the program with the replacement-subtree."
   ([prog replacement-subtree]
-      (replace-random-subtree prog replacement-subtree (rand-int (program-size prog))))
+      (replace-random-subtree prog replacement-subtree (rand-int (program-size prog))))        ;prof helmuths code
   ([prog replacement-subtree subtree-index]
     (cond
       (not (seq? prog)) replacement-subtree
@@ -335,51 +310,44 @@
                  (cons 0 (reductions + (map program-size prog)))))))
 
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; mutation or variation
 
 
-(defn replication
+(defn replication                                  ;basically reproduction
   "Returns clone of the input program."
   [prog]
   prog)
-
-
 
 
 (defn subtree-mutation
   "Selects a random node from an input program and replaces it with a random subtree
    of max-depth 3"
   [program]
-  (replace-random-subtree program (grow 2)))
+  (replace-random-subtree program (grow 3)))    ;arbitrarily selected max-depth 3
 
 
-
-(defn hoist-mutation
+(defn hoist-mutation                           ;helps with our bloat problem
   "Selects root-node from the input program and replaces it with a random subtree
    from the program"
   [program]
   (replace-random-subtree program (select-random-subtree program) 0))
 
 
-
 (defn pt-mutation
   "Selects a random node in a program and replaces it with a new node of the same type"
   [prog]
-  (let [node (rand-int (program-size prog))
-        sub-tree (select-random-subtree prog node)
-        terminal1 (if (= (rand-term) '(erc -10 10))
+  (let [node (rand-int (program-size prog))              ;selects random number in prog size
+        sub-tree (select-random-subtree prog node)       ;selects the subtree at that number
+        terminal1 (if (= (rand-term) '(erc -10 10))      ; makes it so we can eval erc
                     (erc -10 10)
                     'x)]
     (if (seq? sub-tree)
-      (replace-random-subtree prog (conj (rest sub-tree) (rand-fn)) node)
-      (replace-random-subtree prog terminal1 node)
+      (replace-random-subtree prog (conj (rest sub-tree) (rand-fn)) node) ;replace with a random fn if a fn
+      (replace-random-subtree prog terminal1 node) ;replace with terminal if terminal
       )
     ))
-
 
 
 (defn cross-over
@@ -390,75 +358,51 @@
   (replace-random-subtree parent1 (select-random-subtree parent2)))
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;mutate an entire generation
 
 (defn mutate-generation
   "Takes an entire population of programs and produces a population of mutated children.
-   Parameters: pt-mutation: 15%
-               cross-over: 45%
-               subtree-mutation: 15%
-               hoist-mutation: 20%
-               replication: 5%"
+   Parameters: pt-mutation: 10%
+               subtree-mutation: 10%
+               cross-over: 55%
+               hoist-mutation: 23%
+               replication: 2%"
   [population]
-  (loop [pop (best-n-progs (threshold-selection 400 population) 20) ;takes the best 20 children (or less if their error is above 400)
+  (loop [pop (best-n-progs population 30) ;takes the best 30 of the population to move evolution towards better programs
          n (rand-int 100)
          next-gen '()
-         count 40                               ;produces 40 children every time
-         best (first (best-n-progs pop 1))]         
+         count 50]                               ;produces 50 children every time
+            
     (if (= 0 count)
       next-gen
       (cond
-;        (< n 5) (recur  ;5% point mutation on a random program
-;                        pop
-;                        (rand-int 100)
-;                        (conj next-gen (pt-mutation (tournament-selection pop)))
-;                        (dec count)
-;                        best)
-;        (< n 15) (recur ;10% point mutation on the best program
-;                        pop
-;                        (rand-int 100)
-;                        (conj next-gen (pt-mutation best))
-;                        (dec count)
-;                        best)
-        (< n 70) (recur ;15% cross over on two random programs selected via tournament selection
-                        pop
-                        (rand-int 100)
-                        (conj next-gen (cross-over (tournament-selection pop) (tournament-selection pop)))
-                        (dec count)
-                        best)
-;        (< n 60) (recur ;30% cross over on the best program and a random program selected via tournament selection
-;                        pop
-;                        (rand-int 100)
-;                        (conj next-gen (cross-over best (tournament-selection pop)))
-;                        (dec count)
-;                        best)
-        (< n 90) (recur ;5% sub-tree mutation on a random program selected via tournament selection
+        (< n 10) (recur  ;10% point mutation on a random program selected via tournament selection
+                         pop
+                         (rand-int 100)
+                         (conj next-gen (pt-mutation (tournament-selection pop)))
+                         (dec count))
+        (< n 20) (recur ;10% sub-tree mutation on a random program selected via tournament selection
                         pop
                         (rand-int 100)
                         (conj next-gen (subtree-mutation (tournament-selection pop)))
-                        (dec count)
-                        best)
-;        (< n 75) (recur ;10% sub-tree mutation on the best program 
-;                        pop
-;                        (rand-int 100)
-;                        (conj next-gen (subtree-mutation (first(best-n-progs pop 1))))
-;                        (dec count)
-;                        best)
-        (< n 95) (recur ;20% hoist mutation on the best program 
+                        (dec count))
+        (< n 75) (recur ;55% cross over on two random programs selected via tournament selection
+                        pop
+                        (rand-int 100)
+                        (conj next-gen (cross-over (tournament-selection pop) (tournament-selection pop)))
+                        (dec count))
+        (< n 98) (recur ;23% hoist mutation on a random program selected via tourny selection 
                         pop
                         (rand-int 100)
                         (conj next-gen (hoist-mutation (tournament-selection pop)))
-                        (dec count)
-                        best)
+                        (dec count))
         (< n 100) (recur ;5% replication
                          pop
                          (rand-int 100)
                          (conj next-gen (replication (tournament-selection pop)))
-                         (dec count)
-                         best)
+                         (dec count))
         )
       )
     )
@@ -469,16 +413,15 @@
 
 ;main
 
-
-         
 (defn genetic-programming
   "This function takes no inputs.
-   It generates an initial population size of 50, and produces
-   new generations via different methods of mutation of pop size 50.
-   Each generation it prints the generation number, the best program
-   in that generation and the total error of that program."
+   It generates an initial population size of 1000, and produces
+   new generations via different methods of mutation of population size 50.
+   Each generation prints the generation number, the best program
+   in that generation and the total error of that program.
+   Will terminate at 50 generations or when a solution is found."
   []
-  (loop [pop (generate-init-population 50)
+  (loop [pop (generate-init-population 1000)          ;makes the first run have a longer runtime but gives better overall results
          gen-number 1]
     (let [best-prog (first(best-n-progs pop 1))
           best-err (float(program-fitness best-prog))]    
@@ -487,11 +430,11 @@
       (println "Total error of that program:"  best-err)
       (println "\n############################################################\n")
       (cond 
-        (= best-err 0.0) (println "*****Solution Found!*****\n Solution is:" best-prog)
+        (= best-err 0.0) (println "*****Solution Found!*****\n Solution is:" best-prog "\n")
         (= gen-number 50) (println "Max generations reached (" gen-number
                                    ").\nBest program:" best-prog
                                    "\nIt's error:" best-err 
-                                   "\n############################################################\n")
+                                   "\n\n############################################################\n")
         :else (recur
                 (mutate-generation pop)
                 (inc gen-number))

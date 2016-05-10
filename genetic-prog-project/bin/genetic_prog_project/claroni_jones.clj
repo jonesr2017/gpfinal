@@ -1,4 +1,5 @@
-(ns genetic-prog-project.core)
+(ns genetic-prog-project.claroni_jones)
+
 
 ;Authors: Dan Claroni and Rob Jones
 
