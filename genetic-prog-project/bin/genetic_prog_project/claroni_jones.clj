@@ -42,11 +42,6 @@
   )
 
 
-;solution function
-
-(def solution '(+ (* x (* x x)) (+ x 3))) 
-(def solution-set (evaluate map solution -5 6))
-
 
 ;;;  safe-divide, erc ;;; 
 
@@ -102,6 +97,13 @@
   [pop x-value]
   (map (fn [x] (evaluate x x-value)) pop))
 
+
+
+;solution function
+
+
+(def solution '(+ (* x (* x x)) (+ x 3))) 
+(def solution-set (evaluate map solution -5 6))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -422,7 +424,7 @@
    in that generation and the total error of that program.
    Will terminate at 50 generations or when a solution is found."
   []
-  (loop [pop (generate-init-population 1000)          ;makes the first run have a longer runtime but gives better overall results
+  (loop [pop (generate-init-population 1000)          ;makes the first two runs have a longer runtime but gives better overall results
          gen-number 1]
     (let [best-prog (first(best-n-progs pop 1))
           best-err (float(program-fitness best-prog))]    
@@ -443,8 +445,8 @@
       )
     )
   )
-;tester
-(genetic-programming)
+
+
         
       
   
