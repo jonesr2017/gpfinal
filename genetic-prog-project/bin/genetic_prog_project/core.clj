@@ -1,42 +1,5 @@
 (ns genetic-prog-project.core)
 
-
-(defn deep-map                                                             ; might need in future for single pt mutation
-  "deep-map takes a function and a nested collection as input arguments
-   and applies the function to each element within the colection and 
-   nested collections"
-  [function nested-collection]
-  (map (fn [element] 
-         (if (= (coll? element) false)                            
-           (function element)                                     
-           (deep-map function element)                            
-         )
-        )
-       nested-collection)                                         
-)
-
-
-(defn in                                         ;might need
-  "Returns true if value is in collection"
-  [value collection]
-  (loop [i 0]
-    (cond
-      (= (nth collection i) value) true
-      (= i (- (count collection) 1)) false
-      :else (recur (inc i))
-      )
-    )
-  )
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 ;Authors: Dan Claroni and Rob Jones
 
 ;start of our basic implementaion project: "genetic-prog-project"
@@ -86,22 +49,8 @@
 
 ;definitions of terminals and functions
 
-;;; evaluate, safe-divide, program-to-fn, exponent and erc ;;; 
+;;;  safe-divide, erc ;;; 
 
-(defn exp
-  "Rasies the base to the pwr"
-  [base-i pwr]
-  (loop [base base-i 
-         pwr pwr]
-    (cond 
-      (= pwr 0) 1
-      (= pwr 1) (* base 1)
-      (> pwr 1) (recur
-                  (* base base-i)
-                  (dec pwr))
-      )
-    )
-  )
 
 (defn safe-divide
   "Division that handels case of divide by 0"
@@ -201,7 +150,7 @@
 (defn depth-range 
   "Returns a number from range 2-5"
   []
-  (rand-nth (range 2 5))) ; this might be better because the function is only depth 3, and need a range for ramped half-half
+  (rand-nth (range 2 6))) ; this might be better because the function is only depth 3, and need a range for ramped half-half
 
 
 ;;;;;;;;;;;;;;;;;;;;;  Initialization methods and helper functions  ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -268,8 +217,7 @@
 (defn generate-init-population
   [pop-size]
   (take pop-size (repeatedly ramped-h-h)))
-;tester
-(generate-init-population 2)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -280,8 +228,7 @@
   [program]
   (let [prog-values (evaluate map program -5 6)]                   ;the evaluated program from -5 to 5 (our predetermined range)
     (apply + (list-subtraction prog-values solution-set))))
-;tester
-solution-set
+
 
 
 
@@ -289,11 +236,7 @@ solution-set
   "Returns a list of the fitness of each individual population"
   [population]
   (map (fn [x] (program-fitness x)) population))
-;tester
-(def poppi (generate-init-population 2))
-poppi
-(population-fitness poppi)
-solution-set
+
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -305,15 +248,6 @@ solution-set
    fitness value"
   [value prog-pop]
   (filter (fn [x] (<= (program-fitness x) value)) prog-pop))   
-;tester
-(def bigpoppa (generate-init-population 500))
-bigpoppa
-(def smallpoppa (threshold-selection 400 bigpoppa))
-smallpoppa
-(population-fitness smallpoppa)
-(def tinypoppa (best-n-progs smallpoppa 20))
-tinypoppa
-(population-fitness tinypoppa)
 
     
 
@@ -332,13 +266,7 @@ tinypoppa
         )
       )
     )
-  )
-;tester
-(def poppi (generate-init-population 2))
-poppi
-(population-fitness poppi)
-(apply min (population-fitness poppi))
-(tournament-selection poppi)                                     
+  )                                  
 
 
 
@@ -346,26 +274,8 @@ poppi
   "Returns the best n number of programs from the given program population"
   [prog-pop n]
   (take n (sort-by program-fitness prog-pop)))
-;tester
-(def poppu '(x 1 (* x x) (* (* x x) x)))
-poppu
-(population-fitness poppu)
-(best-n-progs poppu 12)
-             
-             
-      
- 
 
-
-(defn rand-cross-over-selection
-  "Selects, at random, two programs out of the populations"
-  [prog-pop]
-  (list (rand-nth prog-pop) (rand-nth prog-pop))
-  )
-;tester
-(def poppi (generate-init-population 3))
-(rand-cross-over-selection poppi)
-  
+             
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   
@@ -404,10 +314,6 @@ poppu
                                                            subtree-index)
       :else (recur (rest prog)
                    (- subtree-index (program-size (first prog)))))))
-;tester
-(def prog '(+ (* x x) (safe-divide(+ x 4) (* x 2))))
-(select-random-subtree prog) ; gives random subtree
-(select-random-subtree prog 0) ;gives subtree at index 0
 
 
 
@@ -432,10 +338,7 @@ poppu
                      element))
                  prog
                  (cons 0 (reductions + (map program-size prog)))))))
-;tester
-(def prog1 '(+ x 5))
-prog1
-(replace-random-subtree prog '(+ x 5))
+
 
 
 
@@ -448,8 +351,7 @@ prog1
   "Returns clone of the input program."
   [prog]
   prog)
-;tester
-(replication '(+ x 5))
+
 
 
 
@@ -460,10 +362,14 @@ prog1
    of max-depth 3"
   [program]
   (replace-random-subtree program (grow 3)))
-;tester
-(subtree-mutation '(* x (* x 2)))
 
 
+
+(defn hoist-mutation
+  "Selects root-node from the input program and replaces it with a random subtree
+   from the program"
+  [program]
+  (replace-random-subtree program (select-random-subtree program) 0))
 
 
 
@@ -480,8 +386,8 @@ prog1
       (replace-random-subtree prog terminal1 node)
       )
     ))
-;tester     
-(pt-mutation '(* x (+ x 2)))
+
+
 
 
 
@@ -493,8 +399,7 @@ prog1
    random subtree in parent2"
   [parent1 parent2]
   (replace-random-subtree parent1 (select-random-subtree parent2)))
-;tester
-(cross-over '(* x 1) '(- x (safe-divide x 2)))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -502,20 +407,21 @@ prog1
 ;mutate an entire generation
 
 (defn mutate-generation
-  "Takes an entire population of programs and produces a population of mutated children."
+  "Takes an entire population of programs and produces a population of mutated children.
+   Parameters:"
   [population]
-  (loop [pop (best-n-progs population 20)
+  (loop [pop (best-n-progs (threshold-selection 400 population) 20)
          n (rand-int 100)
          next-gen '()
          count 50]         ;produces 50 children every time
     (if (= 0 count)
       next-gen
       (cond
-        (< n 5) (recur ;5% point mutation on a random program
-                       pop
-                       (rand-int 100)
-                       (conj next-gen (pt-mutation (rand-nth pop)))
-                       (dec count))
+        (< n 100) (recur ;5% point mutation on a random program
+                          pop
+                          (rand-int 100)
+                          (conj next-gen (pt-mutation (rand-nth pop)))
+                          (dec count))
         (< n 25) (recur ;20% point mutation on the best program
                         pop
                         (rand-int 100)
@@ -550,18 +456,11 @@ prog1
       )
     )
   )
-;tester
-(subtree-mutation '(* x 6))
-(def rand-pop (generate-init-population 5))
-rand-pop
-(mutate-generation rand-pop 2)
-(def chik-pop '((* x (* x x) ) x (+ 7 (- x 2))))
-;(def chik-pop '((* x (* x x))))
-chik-pop
-(mutate-generation chik-pop 1)
+;testers
 
 (def gen1 (generate-init-population 100))
 gen1
+(population-fitness gen1)
 (def gen2 (mutate-generation gen1))
 gen2
 (population-fitness gen2)
@@ -576,15 +475,20 @@ gen5
 (population-fitness gen5)
 (def gen6 (mutate-generation gen5))
 gen6
-(population-fitness gen6)
+(sort(population-fitness gen6))
+(sort-by program-fitness gen6)
 (take 3 (sort-by program-fitness gen6))
-
-
-        
-        
-        
-    
-
+(def gen7 (mutate-generation gen6))
+(reverse(sort(population-fitness gen7)))
+(def gen8 (mutate-generation gen7))
+(reverse(sort(population-fitness gen8))) 
+(def gen9 (mutate-generation gen8))
+(reverse(sort(population-fitness gen9)))        
+(def gen10 (mutate-generation gen9))
+(reverse(sort(population-fitness gen10)))          
+(first (sort-by program-fitness gen10))    
+(def gen11 (mutate-generation gen10))
+(reverse(sort(population-fitness gen11)))          
 
 
 
@@ -604,3 +508,37 @@ gen6
     ;print total error of the best program
     ;restart loop
          ;recur with initial pop as children from this cycle and increment generation count
+         
+         
+(defn genetic-programming
+  "This function takes no inputs.
+   It generates an initial population size of 50, and produces
+   new generations via different methods of mutation of pop size 50.
+   Each generation it prints the generation number, the best program
+   in that generation and the total error of that program."
+  []
+  (loop [pop (generate-init-population 50)
+         gen-number 1]
+    (let [best-prog (first(best-n-progs pop 1))
+          best-err (float(program-fitness best-prog))]
+      (println "\n############################################################\n")
+      (println "Generation number: " gen-number)
+      (println "Best program this generation: " best-prog)
+      (println "Total error of that program: "  best-err)
+      (println "\n############################################################\n")
+      (cond 
+        (= best-err 0) (println "*****Solution Found!*****\n Solution is: " best-prog)
+        (= gen-number 10) (println "Max generations reached (" gen-number
+                                   ").\nBest program: " best-prog
+                                   "\nIt's error: " best-err)
+        :else (recur
+                (mutate-generation pop)
+                (inc gen-number))
+        )
+      )
+    )
+  )
+(genetic-programming)
+        
+      
+  
