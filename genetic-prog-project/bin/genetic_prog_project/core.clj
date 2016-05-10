@@ -148,9 +148,9 @@
 
 
 (defn depth-range 
-  "Returns a number from range 2-5"
+  "Returns a number from range 2-4"
   []
-  (rand-nth (range 2 6))) ; this might be better because the function is only depth 3, and need a range for ramped half-half
+  (rand-nth (range 2 5))) ; this might be better because the function is only depth 3, and need a range for ramped half-half
 
 
 ;;;;;;;;;;;;;;;;;;;;;  Initialization methods and helper functions  ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -260,13 +260,8 @@
     (if (not (>= i 7))
       (recur (inc i)
              (conj lst (rand-nth prog-pop)))
-      (let [rand7 lst
-            minimum (apply min (population-fitness rand7))]
-        (take 1 (filter (fn[x] (= (program-fitness x) minimum)) rand7))    ;returns the best program of a random tournament in a nested list
-        )
-      )
-    )
-  )                                  
+      (first (sort-by program-fitness lst)))))
+
 
 
 
@@ -355,13 +350,11 @@
 
 
 
-
-
 (defn subtree-mutation
   "Selects a random node from an input program and replaces it with a random subtree
    of max-depth 3"
   [program]
-  (replace-random-subtree program (grow 3)))
+  (replace-random-subtree program (grow 2)))
 
 
 
@@ -389,10 +382,6 @@
 
 
 
-
-
-
-
 (defn cross-over
   "Performs cross-over mutation on two input parents
    by replacing a random subtree from parent 1 with a
@@ -408,107 +397,79 @@
 
 (defn mutate-generation
   "Takes an entire population of programs and produces a population of mutated children.
-   Parameters:"
+   Parameters: pt-mutation: 15%
+               cross-over: 45%
+               subtree-mutation: 15%
+               hoist-mutation: 20%
+               replication: 5%"
   [population]
-  (loop [pop (best-n-progs (threshold-selection 400 population) 20)
+  (loop [pop (best-n-progs (threshold-selection 400 population) 20) ;takes the best 20 children (or less if their error is above 400)
          n (rand-int 100)
          next-gen '()
-         count 50]         ;produces 50 children every time
+         count 40                               ;produces 40 children every time
+         best (first (best-n-progs pop 1))]         
     (if (= 0 count)
       next-gen
       (cond
-        (< n 100) (recur ;5% point mutation on a random program
-                          pop
-                          (rand-int 100)
-                          (conj next-gen (pt-mutation (rand-nth pop)))
-                          (dec count))
-        (< n 25) (recur ;20% point mutation on the best program
+;        (< n 5) (recur  ;5% point mutation on a random program
+;                        pop
+;                        (rand-int 100)
+;                        (conj next-gen (pt-mutation (tournament-selection pop)))
+;                        (dec count)
+;                        best)
+;        (< n 15) (recur ;10% point mutation on the best program
+;                        pop
+;                        (rand-int 100)
+;                        (conj next-gen (pt-mutation best))
+;                        (dec count)
+;                        best)
+        (< n 70) (recur ;15% cross over on two random programs selected via tournament selection
                         pop
                         (rand-int 100)
-                        (conj next-gen (pt-mutation (first (best-n-progs pop 1))))
-                        (dec count))
-        (< n 45) (recur ;20% cross over on two random programs
+                        (conj next-gen (cross-over (tournament-selection pop) (tournament-selection pop)))
+                        (dec count)
+                        best)
+;        (< n 60) (recur ;30% cross over on the best program and a random program selected via tournament selection
+;                        pop
+;                        (rand-int 100)
+;                        (conj next-gen (cross-over best (tournament-selection pop)))
+;                        (dec count)
+;                        best)
+        (< n 90) (recur ;5% sub-tree mutation on a random program selected via tournament selection
                         pop
                         (rand-int 100)
-                        (conj next-gen (cross-over (rand-nth pop) (rand-nth pop)))
-                        (dec count))
-        (< n 75) (recur ;30% cross over on the best program and a random program
+                        (conj next-gen (subtree-mutation (tournament-selection pop)))
+                        (dec count)
+                        best)
+;        (< n 75) (recur ;10% sub-tree mutation on the best program 
+;                        pop
+;                        (rand-int 100)
+;                        (conj next-gen (subtree-mutation (first(best-n-progs pop 1))))
+;                        (dec count)
+;                        best)
+        (< n 95) (recur ;20% hoist mutation on the best program 
                         pop
                         (rand-int 100)
-                        (conj next-gen (cross-over (first (best-n-progs pop 1)) (rand-nth pop)))
-                        (dec count))
-        (< n 80) (recur ;5% sub-tree mutation on a random program 
-                        pop
-                        (rand-int 100)
-                        (conj next-gen (subtree-mutation (rand-nth pop)))
-                        (dec count))
-        (< n 95) (recur ;15% sub-tree mutation on the best program 
-                        pop
-                        (rand-int 100)
-                        (conj next-gen (subtree-mutation (first(best-n-progs pop 1))))
-                        (dec count))
+                        (conj next-gen (hoist-mutation (tournament-selection pop)))
+                        (dec count)
+                        best)
         (< n 100) (recur ;5% replication
                          pop
                          (rand-int 100)
-                         (conj next-gen (replication (rand-nth pop)))
-                         (dec count))
+                         (conj next-gen (replication (tournament-selection pop)))
+                         (dec count)
+                         best)
         )
       )
     )
   )
-;testers
-
-(def gen1 (generate-init-population 100))
-gen1
-(population-fitness gen1)
-(def gen2 (mutate-generation gen1))
-gen2
-(population-fitness gen2)
-(def gen3 (mutate-generation gen2))
-gen3
-(population-fitness gen3)
-(nth gen3 8)
-(def gen4 (mutate-generation gen3))
-gen4
-(def gen5 (mutate-generation gen4))
-gen5
-(population-fitness gen5)
-(def gen6 (mutate-generation gen5))
-gen6
-(sort(population-fitness gen6))
-(sort-by program-fitness gen6)
-(take 3 (sort-by program-fitness gen6))
-(def gen7 (mutate-generation gen6))
-(reverse(sort(population-fitness gen7)))
-(def gen8 (mutate-generation gen7))
-(reverse(sort(population-fitness gen8))) 
-(def gen9 (mutate-generation gen8))
-(reverse(sort(population-fitness gen9)))        
-(def gen10 (mutate-generation gen9))
-(reverse(sort(population-fitness gen10)))          
-(first (sort-by program-fitness gen10))    
-(def gen11 (mutate-generation gen10))
-(reverse(sort(population-fitness gen11)))          
-
-
-
-
-
-
-;actual cycles
-    ;loop through with inital population as the generate inital pop 
-         ;and a generation number to keep track
-    ;will do fitness eval ---> if fitness is ever below 11 or 0 then we terminate
-    ;then parent selection using percentages of the different methods
-    ;then mutation using the different methods
     
-    ;;;;;
-    ;print gen number
-    ;print best program
-    ;print total error of the best program
-    ;restart loop
-         ;recur with initial pop as children from this cycle and increment generation count
-         
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;main
+
+
          
 (defn genetic-programming
   "This function takes no inputs.
@@ -520,17 +481,17 @@ gen6
   (loop [pop (generate-init-population 50)
          gen-number 1]
     (let [best-prog (first(best-n-progs pop 1))
-          best-err (float(program-fitness best-prog))]
-      (println "\n############################################################\n")
+          best-err (float(program-fitness best-prog))]    
       (println "Generation number: " gen-number)
-      (println "Best program this generation: " best-prog)
-      (println "Total error of that program: "  best-err)
+      (println "Best program this generation:" best-prog)
+      (println "Total error of that program:"  best-err)
       (println "\n############################################################\n")
       (cond 
-        (= best-err 0) (println "*****Solution Found!*****\n Solution is: " best-prog)
-        (= gen-number 10) (println "Max generations reached (" gen-number
-                                   ").\nBest program: " best-prog
-                                   "\nIt's error: " best-err)
+        (= best-err 0.0) (println "*****Solution Found!*****\n Solution is:" best-prog)
+        (= gen-number 50) (println "Max generations reached (" gen-number
+                                   ").\nBest program:" best-prog
+                                   "\nIt's error:" best-err 
+                                   "\n############################################################\n")
         :else (recur
                 (mutate-generation pop)
                 (inc gen-number))
@@ -538,6 +499,7 @@ gen6
       )
     )
   )
+;tester
 (genetic-programming)
         
       
